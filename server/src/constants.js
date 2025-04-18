@@ -1,0 +1,1 @@
+export const DB_NAME = "disaster_management_system"
