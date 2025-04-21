@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { alertService } from '../services/api';
-import socketService from '../sockets/socketService';
+import socketService from '../services/socketService';
 
 // Create context
 const AlertContext = createContext();
