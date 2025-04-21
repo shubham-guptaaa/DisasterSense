@@ -56,3 +56,13 @@ body {
     display: none;
   }
 }
+
+/* For the countdown animation in alerts */
+@keyframes countdown {
+  from { width: 100%; }
+  to { width: 0%; }
+}
+
+.animate-countdown {
+  animation: countdown 15s linear forwards;
+}
