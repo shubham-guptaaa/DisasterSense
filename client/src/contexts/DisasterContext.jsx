@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { disasterService } from '../services/api';
-import socketService from '../sockets/socketService';
+import socketService from '../services/socketService';
 
 // Create context
 const DisasterContext = createContext();
@@ -9,6 +9,7 @@ export const DisasterProvider = ({ children }) => {
   const [disasters, setDisasters] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [socketConnected, setSocketConnected] = useState(false);
   const [activeFilters, setActiveFilters] = useState({
     type: '',
     severity: '',
@@ -37,56 +38,63 @@ export const DisasterProvider = ({ children }) => {
     fetchDisasters();
   }, [activeFilters]);
 
-  // Connect to socket for real-time updates
-  useEffect(() => {
-    // Connect to socket
-    socketService.connect();
-
-    // Join the ALL disasters feed
-    socketService.joinDisasterFeed('ALL');
-
-    // Listen for new disasters
-    socketService.on('new-disaster', handleNewDisaster);
-
-    // Listen for disaster updates
-    socketService.on('update-disaster', handleDisasterUpdate);
-
-    // Listen for disaster deletions
-    socketService.on('delete-disaster', handleDisasterDelete);
-
-    // Clean up on unmount
-    return () => {
-      socketService.off('new-disaster', handleNewDisaster);
-      socketService.off('update-disaster', handleDisasterUpdate);
-      socketService.off('delete-disaster', handleDisasterDelete);
-    };
-  }, [disasters]);
-
-  // Handle new disaster from socket
-  const handleNewDisaster = (newDisaster) => {
+  // Handler functions defined with useCallback to prevent recreating them on every render
+  const handleNewDisaster = useCallback((newDisaster) => {
     // Check if we should add this disaster based on active filters
     const shouldAdd = checkAgainstFilters(newDisaster);
     
     if (shouldAdd) {
       setDisasters(prevDisasters => [newDisaster, ...prevDisasters]);
     }
-  };
+  }, []);
 
-  // Handle disaster update from socket
-  const handleDisasterUpdate = (updatedDisaster) => {
+  const handleDisasterUpdate = useCallback((updatedDisaster) => {
     setDisasters(prevDisasters => 
       prevDisasters.map(disaster => 
         disaster._id === updatedDisaster._id ? updatedDisaster : disaster
       )
     );
-  };
+  }, []);
 
-  // Handle disaster deletion from socket
-  const handleDisasterDelete = (disasterId) => {
+  const handleDisasterDelete = useCallback((disasterId) => {
     setDisasters(prevDisasters => 
       prevDisasters.filter(disaster => disaster._id !== disasterId)
     );
-  };
+  }, []);
+
+  // Connect to socket for real-time updates
+  useEffect(() => {
+    // Initialize socket connection
+    const initializeSocket = async () => {
+      try {
+        // Connect to socket
+        await socketService.connect();
+        setSocketConnected(true);
+        
+        // Join the ALL disasters feed
+        socketService.joinDisasterFeed('ALL');
+        
+        // Set up event listeners
+        socketService.on('new-disaster', handleNewDisaster);
+        socketService.on('update-disaster', handleDisasterUpdate);
+        socketService.on('delete-disaster', handleDisasterDelete);
+        
+        console.log('Disaster socket connection established');
+      } catch (error) {
+        console.error('Failed to connect to disaster socket:', error);
+        setSocketConnected(false);
+      }
+    };
+    
+    initializeSocket();
+    
+    // Clean up on unmount
+    return () => {
+      socketService.off('new-disaster', handleNewDisaster);
+      socketService.off('update-disaster', handleDisasterUpdate);
+      socketService.off('delete-disaster', handleDisasterDelete);
+    };
+  }, [handleNewDisaster, handleDisasterUpdate, handleDisasterDelete]);
 
   // Check if a disaster matches the current filters
   const checkAgainstFilters = (disaster) => {
@@ -167,6 +175,7 @@ export const DisasterProvider = ({ children }) => {
         disasters,
         loading,
         error,
+        socketConnected,
         activeFilters,
         filterDisasters,
         resetFilters,
