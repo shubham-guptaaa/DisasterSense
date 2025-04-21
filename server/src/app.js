@@ -7,6 +7,7 @@ import http from "http"
 import disasterRoutes from './routes/disaster.routes.js'
 import alertRoutes from './routes/alert.routes.js'
 import simulationRoutes from './routes/simulation.routes.js'
+import authRoutes from './routes/auth.routes.js'
 
 // Import services
 import dataStreamService from './services/dataStream.service.js'
@@ -30,6 +31,7 @@ app.use(express.urlencoded({ extended: true }))
 app.use('/api/disasters', disasterRoutes)
 app.use('/api/alerts', alertRoutes)
 app.use('/api/simulate', simulationRoutes)
+app.use('/api/auth', authRoutes)
 
 // Socket.io connection
 io.on("connection", (socket) => {
